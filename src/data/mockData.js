@@ -22,6 +22,10 @@ export const WHITELISTED_ACCOUNTS = [
 // holdReason mirrors SAP credit management check types:
 //   "static" -> static credit limit check (this order exceeds the limit)
 //   "oldest" -> oldest open item check (an invoice is past due)
+//
+// paymentHistory is this customer's last few *closed* orders (not the one
+// currently on hold) — what AR actually looks at when deciding whether to
+// release, keep holding, or dig further. daysLate is 0 for on-time payment.
 export const mockHolds = [
   {
     id: "SO-001847",
@@ -33,6 +37,12 @@ export const mockHolds = [
     availableCredit: -3500,
     holdReason: "static",
     daysOnHold: 3,
+    paymentHistory: [
+      { orderId: "SO-001623", orderDate: "2026-05-02", amount: 31200, dueDate: "2026-06-01", paidDate: "2026-05-30", paidAmount: 31200, daysLate: 0 },
+      { orderId: "SO-001701", orderDate: "2026-06-04", amount: 18400, dueDate: "2026-07-04", paidDate: "2026-07-02", paidAmount: 18400, daysLate: 0 },
+      { orderId: "SO-001765", orderDate: "2026-06-28", amount: 26900, dueDate: "2026-07-28", paidDate: "2026-07-26", paidAmount: 26900, daysLate: 0 },
+      { orderId: "SO-001802", orderDate: "2026-07-15", amount: 22750, dueDate: "2026-08-14", paidDate: "2026-08-11", paidAmount: 22750, daysLate: 0 },
+    ],
   },
   {
     id: "SO-001912",
@@ -46,6 +56,12 @@ export const mockHolds = [
     daysOnHold: 12,
     invoiceNumber: "INV-2026-5421",
     daysOverdue: 5,
+    paymentHistory: [
+      { orderId: "SO-001588", orderDate: "2026-04-20", amount: 39500, dueDate: "2026-05-20", paidDate: "2026-06-03", paidAmount: 39500, daysLate: 14 },
+      { orderId: "SO-001654", orderDate: "2026-05-18", amount: 27800, dueDate: "2026-06-17", paidDate: "2026-06-17", paidAmount: 27800, daysLate: 0 },
+      { orderId: "SO-001739", orderDate: "2026-06-22", amount: 45200, dueDate: "2026-07-22", paidDate: "2026-08-01", paidAmount: 45200, daysLate: 10 },
+      { orderId: "SO-001820", orderDate: "2026-07-20", amount: 33100, dueDate: "2026-08-19", paidDate: "2026-08-15", paidAmount: 33100, daysLate: 0 },
+    ],
   },
   {
     id: "SO-002003",
@@ -57,6 +73,11 @@ export const mockHolds = [
     availableCredit: -11000,
     holdReason: "static",
     daysOnHold: 7,
+    paymentHistory: [
+      { orderId: "SO-001611", orderDate: "2026-04-10", amount: 52000, dueDate: "2026-05-10", paidDate: "2026-06-24", paidAmount: 52000, daysLate: 45 },
+      { orderId: "SO-001688", orderDate: "2026-05-25", amount: 38700, dueDate: "2026-06-24", paidDate: "2026-07-14", paidAmount: 38700, daysLate: 20 },
+      { orderId: "SO-001755", orderDate: "2026-06-30", amount: 41200, dueDate: "2026-07-30", paidDate: "2026-07-29", paidAmount: 41200, daysLate: 0 },
+    ],
   },
   {
     id: "SO-002041",
@@ -70,6 +91,11 @@ export const mockHolds = [
     daysOnHold: 9,
     invoiceNumber: "INV-2026-5390",
     daysOverdue: 18,
+    paymentHistory: [
+      { orderId: "SO-001640", orderDate: "2026-04-28", amount: 19800, dueDate: "2026-05-28", paidDate: "2026-06-07", paidAmount: 19800, daysLate: 10 },
+      { orderId: "SO-001719", orderDate: "2026-06-01", amount: 24300, dueDate: "2026-07-01", paidDate: "2026-06-29", paidAmount: 24300, daysLate: 0 },
+      { orderId: "SO-001788", orderDate: "2026-07-10", amount: 16900, dueDate: "2026-08-09", paidDate: "2026-08-07", paidAmount: 16900, daysLate: 0 },
+    ],
   },
 ];
 

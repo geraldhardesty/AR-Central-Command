@@ -13,8 +13,10 @@ import {
 } from "../data/constants.js";
 import { mockHolds, mockDelinquent, mockExistingCredit, WHITELISTED_ACCOUNTS } from "../data/mockData.js";
 import { loadPublicApplications, isWhitelisted } from "../data/utils.js";
+import { assessHold } from "../data/riskScoring.js";
 import MetricCard from "./MetricCard.jsx";
 import StatusBadge from "./StatusBadge.jsx";
+import { RiskScorePill, RecommendationBadge } from "./RiskBadge.jsx";
 
 const APPLY_LINK = `${window.location.origin}${window.location.pathname}?apply`;
 
@@ -27,6 +29,9 @@ export default function ARDashboard() {
   const [submittedRequests, setSubmittedRequests] = useState([]);
   const [sapRecords, setSapRecords] = useState([]);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [riskSort, setRiskSort] = useState(null); // null | "asc" | "desc"
+
+  const toggleRiskSort = () => setRiskSort(riskSort === "desc" ? "asc" : riskSort === "asc" ? null : "desc");
 
   // Pick up applications customers submitted through the public link.
   useEffect(() => {
@@ -76,10 +81,23 @@ export default function ARDashboard() {
   const delinquentCount = mockDelinquent.length;
   const pendingRequests = submittedRequests.filter(r => r.status === "submitted").length;
 
+  // Calculated once per hold — AR's risk assessment, pending a real agent.
+  const holdsWithAssessment = useMemo(
+    () => mockHolds.map((h) => ({ ...h, assessment: assessHold(h) })),
+    []
+  );
+
   const filteredHolds = useMemo(() => {
-    if (filter === "auto_approve") return mockHolds.filter(isReleaseReady);
-    return mockHolds;
-  }, [filter]);
+    let rows = filter === "auto_approve" ? holdsWithAssessment.filter(isReleaseReady) : holdsWithAssessment;
+    if (riskSort) {
+      rows = [...rows].sort((a, b) =>
+        riskSort === "asc"
+          ? a.assessment.riskScore - b.assessment.riskScore
+          : b.assessment.riskScore - a.assessment.riskScore
+      );
+    }
+    return rows;
+  }, [filter, riskSort, holdsWithAssessment]);
 
   return (
     <div style={{ background: "white", minHeight: "100vh" }}>
@@ -295,32 +313,108 @@ export default function ARDashboard() {
                           <th style={{ textAlign: "right", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase", whiteSpace: "nowrap" }}>Available Credit</th>
                           <th style={{ textAlign: "left", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase", whiteSpace: "nowrap" }}>Status</th>
                           <th style={{ textAlign: "right", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase", whiteSpace: "nowrap" }}>Days</th>
+                          <th
+                            onClick={toggleRiskSort}
+                            style={{ textAlign: "right", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}
+                          >
+                            Risk Score {riskSort === "desc" ? "▼" : riskSort === "asc" ? "▲" : "↕"}
+                          </th>
+                          <th style={{ textAlign: "left", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase", whiteSpace: "nowrap" }}>Recommendation</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredHolds.map((hold) => {
                           const whitelisted = isWhitelisted(hold.customerId);
+                          const isExpanded = expandedRow === hold.id;
                           return (
-                            <tr key={hold.id} style={{ borderBottom: `1px solid #f0f0f0`, background: whitelisted ? `${YOKOGAWA_BLUE}0d` : "transparent" }}>
-                              <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600, color: YOKOGAWA_BLUE, whiteSpace: "nowrap" }}>{hold.id}</td>
-                              <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600, whiteSpace: "nowrap" }}>
-                                {hold.customer}
-                                {whitelisted && (
-                                  <span style={{ marginLeft: "8px", fontSize: "10px", fontWeight: 700, background: YOKOGAWA_BLUE, color: "white", padding: "2px 6px", borderRadius: "2px", textTransform: "uppercase" }}>
-                                    Whitelisted
-                                  </span>
-                                )}
-                              </td>
-                              <td style={{ padding: "14px 16px", fontSize: "12px", color: GRAY_MEDIUM, fontFamily: "monospace", whiteSpace: "nowrap" }}>{hold.customerId}</td>
-                              <td style={{ padding: "14px 16px", fontSize: "13px", color: GRAY_MEDIUM, whiteSpace: "nowrap" }}>{hold.orderDate}</td>
-                              <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600, textAlign: "right", whiteSpace: "nowrap" }}>${hold.amount.toLocaleString()}</td>
-                              <td style={{ padding: "14px 16px", fontSize: "13px", textAlign: "right", whiteSpace: "nowrap" }}>${hold.creditLimit.toLocaleString()}</td>
-                              <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600, textAlign: "right", whiteSpace: "nowrap", color: hold.availableCredit < 0 ? DANGER : YOKOGAWA_DARK }}>
-                                {hold.availableCredit < 0 ? "-" : ""}${Math.abs(hold.availableCredit).toLocaleString()}
-                              </td>
-                              <td style={{ padding: "14px 16px" }}><StatusBadge status={hold.holdReason} /></td>
-                              <td style={{ padding: "14px 16px", textAlign: "right", fontSize: "13px", fontWeight: 600, color: hold.daysOnHold > 7 ? DANGER : WARNING, whiteSpace: "nowrap" }}>{hold.daysOnHold}</td>
-                            </tr>
+                            <React.Fragment key={hold.id}>
+                              <tr
+                                onClick={() => setExpandedRow(isExpanded ? null : hold.id)}
+                                style={{ borderBottom: `1px solid #f0f0f0`, background: whitelisted ? `${YOKOGAWA_BLUE}0d` : "transparent", cursor: "pointer" }}
+                              >
+                                <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600, color: YOKOGAWA_BLUE, whiteSpace: "nowrap" }}>{hold.id}</td>
+                                <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600, whiteSpace: "nowrap" }}>
+                                  {hold.customer}
+                                  {whitelisted && (
+                                    <span style={{ marginLeft: "8px", fontSize: "10px", fontWeight: 700, background: YOKOGAWA_BLUE, color: "white", padding: "2px 6px", borderRadius: "2px", textTransform: "uppercase" }}>
+                                      Whitelisted
+                                    </span>
+                                  )}
+                                </td>
+                                <td style={{ padding: "14px 16px", fontSize: "12px", color: GRAY_MEDIUM, fontFamily: "monospace", whiteSpace: "nowrap" }}>{hold.customerId}</td>
+                                <td style={{ padding: "14px 16px", fontSize: "13px", color: GRAY_MEDIUM, whiteSpace: "nowrap" }}>{hold.orderDate}</td>
+                                <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600, textAlign: "right", whiteSpace: "nowrap" }}>${hold.amount.toLocaleString()}</td>
+                                <td style={{ padding: "14px 16px", fontSize: "13px", textAlign: "right", whiteSpace: "nowrap" }}>${hold.creditLimit.toLocaleString()}</td>
+                                <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600, textAlign: "right", whiteSpace: "nowrap", color: hold.availableCredit < 0 ? DANGER : YOKOGAWA_DARK }}>
+                                  {hold.availableCredit < 0 ? "-" : ""}${Math.abs(hold.availableCredit).toLocaleString()}
+                                </td>
+                                <td style={{ padding: "14px 16px" }}><StatusBadge status={hold.holdReason} /></td>
+                                <td style={{ padding: "14px 16px", textAlign: "right", fontSize: "13px", fontWeight: 600, color: hold.daysOnHold > 7 ? DANGER : WARNING, whiteSpace: "nowrap" }}>{hold.daysOnHold}</td>
+                                <td style={{ padding: "14px 16px", textAlign: "right" }}><RiskScorePill score={hold.assessment.riskScore} /></td>
+                                <td style={{ padding: "14px 16px" }}><RecommendationBadge recommendation={hold.assessment.recommendation} /></td>
+                              </tr>
+                              {isExpanded && (
+                                <tr>
+                                  <td colSpan={11} style={{ padding: "20px 24px", background: GRAY_LIGHT, borderBottom: `1px solid #e0e0e0` }}>
+                                    <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: "24px" }}>
+                                      <div>
+                                        <p style={{ fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase", margin: "0 0 10px" }}>Payment History</p>
+                                        {hold.paymentHistory?.length ? (
+                                          <div style={{ background: "white", border: "1px solid #e0e0e0", borderRadius: "4px", overflow: "auto" }}>
+                                            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                                              <thead>
+                                                <tr style={{ borderBottom: "1px solid #e0e0e0" }}>
+                                                  <th style={{ textAlign: "left", padding: "8px 12px", fontSize: "10px", fontWeight: 700, color: GRAY_MEDIUM, textTransform: "uppercase", whiteSpace: "nowrap" }}>Order</th>
+                                                  <th style={{ textAlign: "left", padding: "8px 12px", fontSize: "10px", fontWeight: 700, color: GRAY_MEDIUM, textTransform: "uppercase", whiteSpace: "nowrap" }}>Order Date</th>
+                                                  <th style={{ textAlign: "right", padding: "8px 12px", fontSize: "10px", fontWeight: 700, color: GRAY_MEDIUM, textTransform: "uppercase", whiteSpace: "nowrap" }}>Order Amount</th>
+                                                  <th style={{ textAlign: "right", padding: "8px 12px", fontSize: "10px", fontWeight: 700, color: GRAY_MEDIUM, textTransform: "uppercase", whiteSpace: "nowrap" }}>Payment Amount</th>
+                                                  <th style={{ textAlign: "left", padding: "8px 12px", fontSize: "10px", fontWeight: 700, color: GRAY_MEDIUM, textTransform: "uppercase", whiteSpace: "nowrap" }}>Payment</th>
+                                                </tr>
+                                              </thead>
+                                              <tbody>
+                                                {hold.paymentHistory.map((p) => (
+                                                  <tr key={p.orderId} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                                                    <td style={{ padding: "8px 12px", fontSize: "12px", color: YOKOGAWA_BLUE, fontWeight: 600, whiteSpace: "nowrap" }}>{p.orderId}</td>
+                                                    <td style={{ padding: "8px 12px", fontSize: "12px", color: GRAY_MEDIUM, whiteSpace: "nowrap" }}>{p.orderDate}</td>
+                                                    <td style={{ padding: "8px 12px", fontSize: "12px", textAlign: "right", whiteSpace: "nowrap" }}>${p.amount.toLocaleString()}</td>
+                                                    <td style={{ padding: "8px 12px", fontSize: "12px", textAlign: "right", whiteSpace: "nowrap" }}>${p.paidAmount.toLocaleString()}</td>
+                                                    <td style={{ padding: "8px 12px" }}>
+                                                      {p.daysLate > 0 ? (
+                                                        <span style={{ fontSize: "11px", fontWeight: 700, color: WARNING, background: WARNING_LIGHT, padding: "2px 8px", borderRadius: "3px", whiteSpace: "nowrap" }}>{p.daysLate}d late</span>
+                                                      ) : (
+                                                        <span style={{ fontSize: "11px", fontWeight: 700, color: SUCCESS, background: SUCCESS_LIGHT, padding: "2px 8px", borderRadius: "3px", whiteSpace: "nowrap" }}>On time</span>
+                                                      )}
+                                                    </td>
+                                                  </tr>
+                                                ))}
+                                              </tbody>
+                                            </table>
+                                          </div>
+                                        ) : (
+                                          <p style={{ fontSize: "12px", color: GRAY_MEDIUM }}>No prior order history on file.</p>
+                                        )}
+                                      </div>
+
+                                      <div>
+                                        <p style={{ fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase", margin: "0 0 10px" }}>AR Risk Assessment</p>
+                                        <div style={{ background: "white", border: "1px solid #e0e0e0", borderRadius: "4px", padding: "16px" }}>
+                                          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+                                            <RiskScorePill score={hold.assessment.riskScore} />
+                                            <RecommendationBadge recommendation={hold.assessment.recommendation} />
+                                          </div>
+                                          <ul style={{ margin: 0, padding: "0 0 0 18px", fontSize: "12px", color: GRAY_MEDIUM, lineHeight: 1.8 }}>
+                                            {hold.assessment.factors.map((f, i) => <li key={i}>{f}</li>)}
+                                          </ul>
+                                        </div>
+                                        <p style={{ fontSize: "11px", color: GRAY_MEDIUM, marginTop: "10px" }}>
+                                          Calculated from mock payment history — a future agent will pull this from SAP directly.
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
                           );
                         })}
                       </tbody>

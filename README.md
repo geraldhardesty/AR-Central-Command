@@ -33,12 +33,14 @@ src/
     CustomerCreditForm.jsx     # standalone, shareable customer credit application
     DocsPage.jsx                # internal reference page (whitelisted accounts)
     SignaturePad.jsx              # canvas-based digital signature capture
-    MetricCard.jsx                 # summary metric tile
-    StatusBadge.jsx                 # SAP hold-reason pill (Static / Oldest)
+    RiskBadge.jsx                   # risk score pill + recommendation badge
+    MetricCard.jsx                    # summary metric tile
+    StatusBadge.jsx                    # SAP hold-reason pill (Static / Oldest)
   data/
-    constants.js                 # design tokens + business rule constants
-    mockData.js                   # mock holds / delinquent / whitelist / credit balances
-    utils.js                      # form helpers, duplicate-match logic, localStorage bridge
+    constants.js                    # design tokens + business rule constants
+    mockData.js                       # mock holds / delinquent / whitelist / credit balances
+    riskScoring.js                      # calculated risk score + recommendation
+    utils.js                             # form helpers, duplicate-match logic, localStorage bridge
   main.jsx
   index.css
 ```
@@ -79,10 +81,37 @@ they're carrying a credit balance (overpayment or credit memo) that needs
 review — that's the separate **Existing Credit** tab, backed by
 `mockExistingCredit`.
 
+### Risk score & recommendation
+
+Expanding a hold row shows the customer's recent payment history (past
+orders, payment amounts, on-time vs. days-late) and an AR risk assessment —
+the same investigation an AR rep does manually today. `riskScoring.js`
+calculates a 0–100 risk score from that history plus the current hold
+(late-payment rate, average days late, hold reason, over-limit severity,
+whitelist status) and maps it to a recommendation:
+
+- `< 30` → **Release**
+- `30–59` → **Find More Info**
+- `≥ 60` → **Keep on Hold**
+
+Both the score and recommendation also appear as columns on the main table.
+Click "Risk Score" in the header to sort by it — since recommendation is a
+direct function of score, sorting by score also clusters and orders the
+recommendations. The row expansion additionally lists the plain-language
+factors behind the score, so a reviewer isn't just trusting a number.
+
+This is entirely mocked today (`paymentHistory` is hand-authored per
+account in `mockData.js`) — the eventual agent that pulls real payment
+history from SAP is still to be built; the scoring function itself doesn't
+change, just its input.
+
 ## Known TODOs / next steps
 
 - [ ] **AR agent** — submissions land in the Queue as a to-do, but nothing
       triages them yet. Build the agent that picks them up.
+- [ ] **Real payment history** — `calculateRiskScore()` in `riskScoring.js`
+      is real logic, but its input (`hold.paymentHistory`) is hand-authored
+      mock data. Build the agent that pulls actual payment history from SAP.
 - [ ] **Real backend for applications** — replace the `localStorage` bridge
       in `utils.js` with an API so a customer's submission actually reaches
       AR staff on a different machine.
