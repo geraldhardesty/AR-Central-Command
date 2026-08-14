@@ -1,25 +1,64 @@
 import { EXISTING_CUSTOMERS } from "./mockData.js";
 
+const PUBLIC_APPLICATIONS_KEY = "ar_credit_applications";
+
 export const todayISO = () => new Date().toISOString().slice(0, 10);
 
-export const emptyForm = () => ({
-  submittedBy: "",
-  submissionDate: todayISO(),
+export const emptyTradeRef = () => ({
+  id: crypto.randomUUID(),
+  name: "", address: "", city: "", state: "", zip: "",
+  phone: "", fax: "", email: "", contact: "",
+});
+
+export const emptyBankRef = () => ({
+  id: crypto.randomUUID(),
+  name: "", address: "", city: "", state: "", zip: "",
+  phone: "", fax: "", email: "", contact: "", accountNumber: "",
+});
+
+// Matches the fields on the Yokogawa Corporation of America
+// Customer Credit Information Form (paper intake form).
+export const emptyCreditApplication = () => ({
   companyName: "",
   address: "",
   city: "",
   state: "",
   zip: "",
-  dnbNumber: "",
   accountingContact: "",
   accountingPhone: "",
+  accountingFax: "",
   accountingEmail: "",
+  dnbNumber: "",
+  tradeRefs: [emptyTradeRef(), emptyTradeRef(), emptyTradeRef()],
+  bankRefs: [emptyBankRef(), emptyBankRef()],
   creditLimitRequested: "",
-  paymentTerms: "Net 30",
-  tradeRefs: [{ id: crypto.randomUUID(), name: "", phone: "", contact: "" }],
-  bankRef: { name: "", contact: "", phone: "" },
-  comments: "",
+  financeContact: "",
+  agreedToTerms: false,
+  signerName: "",
+  signerTitle: "",
+  signedDate: todayISO(),
+  signatureDataUrl: "",
 });
+
+// -----------------------------------------------------------------------
+// Public submissions storage
+// TODO: replace with a real API once the AR agent backend exists. This
+// uses localStorage only so a full demo (send link -> customer submits ->
+// shows up in the internal Queue) works within one browser.
+// -----------------------------------------------------------------------
+export function loadPublicApplications() {
+  try {
+    return JSON.parse(localStorage.getItem(PUBLIC_APPLICATIONS_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+
+export function savePublicApplication(application) {
+  const all = loadPublicApplications();
+  all.push(application);
+  localStorage.setItem(PUBLIC_APPLICATIONS_KEY, JSON.stringify(all));
+}
 
 export function normalizeName(name) {
   return String(name || "")

@@ -1,9 +1,9 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   AlertCircle, Building2, FileSearch, ShieldCheck, Plus, CheckCircle2, XCircle,
   Trash2, Loader2, TrendingUp, DollarSign, Clock, Mail, Lock, Unlock, Send,
   Calendar, Phone, FileText, ChevronDown, Settings, RefreshCw, Filter, Search,
-  Landmark, ClipboardList, DatabaseZap, Info, ArrowRight, ArrowLeft
+  Landmark, ClipboardList, DatabaseZap, Info, ArrowRight, ArrowLeft, Copy, ExternalLink
 } from "lucide-react";
 
 import {
@@ -12,9 +12,11 @@ import {
   AUTO_APPROVE_MIN_SCORE, AUTO_APPROVE_MAX_LIMIT, AUTO_APPROVE_LIST,
 } from "../data/constants.js";
 import { mockHolds, mockDelinquent } from "../data/mockData.js";
-import { emptyForm, findExistingMatch } from "../data/utils.js";
+import { loadPublicApplications } from "../data/utils.js";
 import MetricCard from "./MetricCard.jsx";
 import StatusBadge from "./StatusBadge.jsx";
+
+const APPLY_LINK = `${window.location.origin}${window.location.pathname}?apply`;
 
 // Main App
 export default function ARDashboard() {
@@ -22,44 +24,25 @@ export default function ARDashboard() {
   const [subTab, setSubTab] = useState("holds");
   const [expandedRow, setExpandedRow] = useState(null);
   const [filter, setFilter] = useState("all");
-  const [form, setForm] = useState(emptyForm());
   const [submittedRequests, setSubmittedRequests] = useState([]);
   const [sapRecords, setSapRecords] = useState([]);
-  const [formErrors, setFormErrors] = useState({});
-  const [existingMatch, setExistingMatch] = useState(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
-  const handleFormChange = (field, value) => {
-    const newForm = { ...form, [field]: value };
-    setForm(newForm);
-    setExistingMatch(findExistingMatch(newForm));
-  };
+  // Pick up applications customers submitted through the public link.
+  useEffect(() => {
+    const publicApps = loadPublicApplications();
+    if (publicApps.length === 0) return;
+    setSubmittedRequests((current) => {
+      const knownIds = new Set(current.map((r) => r.id));
+      const newOnes = publicApps.filter((a) => !knownIds.has(a.id));
+      return newOnes.length ? [...newOnes, ...current] : current;
+    });
+  }, []);
 
-  const submitForm = () => {
-    const errors = {};
-    if (!form.submittedBy) errors.submittedBy = "Required";
-    if (!form.companyName) errors.companyName = "Required";
-    if (!form.dnbNumber) errors.dnbNumber = "Required";
-    if (!form.accountingContact) errors.accountingContact = "Required";
-    if (!form.creditLimitRequested) errors.creditLimitRequested = "Required";
-
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
-      return;
-    }
-
-    const riskScore = Math.floor(Math.random() * 100);
-    const newRequest = {
-      id: crypto.randomUUID(),
-      ...form,
-      riskScore,
-      status: riskScore >= AUTO_APPROVE_MIN_SCORE && form.creditLimitRequested <= AUTO_APPROVE_MAX_LIMIT ? "auto_approved" : "submitted",
-      submittedAt: new Date().toISOString(),
-    };
-
-    setSubmittedRequests([newRequest, ...submittedRequests]);
-    setForm(emptyForm());
-    setFormErrors({});
-    setExistingMatch(null);
+  const copyApplyLink = () => {
+    navigator.clipboard.writeText(APPLY_LINK);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
   };
 
   const pushToSap = (requestId) => {
@@ -74,7 +57,6 @@ export default function ARDashboard() {
       city: request.city,
       state: request.state,
       creditLimitRequested: request.creditLimitRequested,
-      paymentTerms: request.paymentTerms,
       sapPushedAt: new Date().toISOString(),
       autoApproved: request.status === "auto_approved",
     };
@@ -428,133 +410,45 @@ export default function ARDashboard() {
                 ))}
               </div>
 
-              {/* Intake Form Sub-tab */}
+              {/* Intake Sub-tab — share the customer-facing application link */}
               {subTab === "intake" && (
                 <div>
-                  {existingMatch && (
-                    <div style={{
-                      background: WARNING_LIGHT,
-                      border: `1px solid ${WARNING}`,
-                      borderRadius: "4px",
-                      padding: "12px 16px",
-                      marginBottom: "20px",
-                      fontSize: "13px",
-                      color: WARNING,
-                    }}>
-                      ⚠️ Duplicate detected: <strong>{existingMatch.companyName}</strong> already exists in SAP ({existingMatch.sapId})
-                    </div>
-                  )}
+                  <div style={{ background: "white", border: `1px solid #e0e0e0`, borderRadius: "4px", padding: "24px", marginBottom: "20px" }}>
+                    <h3 style={{ fontSize: "16px", fontWeight: 700, color: YOKOGAWA_DARK, margin: "0 0 8px" }}>Send a credit application to a new customer</h3>
+                    <p style={{ fontSize: "13px", color: GRAY_MEDIUM, margin: "0 0 20px", lineHeight: 1.6 }}>
+                      This form now lives on its own page so a customer can fill it out directly — matching
+                      Yokogawa's Customer Credit Information Form, including trade references, bank references,
+                      and a signature. Send a rep the link below; once a customer submits, it appears in the
+                      Queue for review.
+                    </p>
 
-                  <div style={{ background: "white", border: `1px solid #e0e0e0`, borderRadius: "4px", padding: "24px" }}>
-                    <h3 style={{ fontSize: "16px", fontWeight: 700, color: YOKOGAWA_DARK, marginBottom: "20px", margin: 0 }}>New Customer Credit Application</h3>
-
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
-                      <div>
-                        <label style={{ fontSize: "12px", fontWeight: 700, color: YOKOGAWA_DARK, display: "block", marginBottom: "6px" }}>
-                          Submitted By *
-                        </label>
-                        <input
-                          type="text"
-                          value={form.submittedBy}
-                          onChange={(e) => handleFormChange("submittedBy", e.target.value)}
-                          style={{
-                            width: "100%",
-                            padding: "8px 12px",
-                            border: `1px solid ${formErrors.submittedBy ? DANGER : "#e0e0e0"}`,
-                            borderRadius: "4px",
-                            fontSize: "13px",
-                          }}
-                          placeholder="Sales rep name"
-                        />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: "12px", fontWeight: 700, color: YOKOGAWA_DARK, display: "block", marginBottom: "6px" }}>
-                          Company Name *
-                        </label>
-                        <input
-                          type="text"
-                          value={form.companyName}
-                          onChange={(e) => handleFormChange("companyName", e.target.value)}
-                          style={{
-                            width: "100%",
-                            padding: "8px 12px",
-                            border: `1px solid ${formErrors.companyName ? DANGER : "#e0e0e0"}`,
-                            borderRadius: "4px",
-                            fontSize: "13px",
-                          }}
-                          placeholder="Legal company name"
-                        />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: "12px", fontWeight: 700, color: YOKOGAWA_DARK, display: "block", marginBottom: "6px" }}>
-                          D&B Number *
-                        </label>
-                        <input
-                          type="text"
-                          value={form.dnbNumber}
-                          onChange={(e) => handleFormChange("dnbNumber", e.target.value)}
-                          style={{
-                            width: "100%",
-                            padding: "8px 12px",
-                            border: `1px solid ${formErrors.dnbNumber ? DANGER : "#e0e0e0"}`,
-                            borderRadius: "4px",
-                            fontSize: "13px",
-                          }}
-                          placeholder="XX-XXX-XXXX"
-                        />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: "12px", fontWeight: 700, color: YOKOGAWA_DARK, display: "block", marginBottom: "6px" }}>
-                          Credit Limit Requested *
-                        </label>
-                        <input
-                          type="number"
-                          value={form.creditLimitRequested}
-                          onChange={(e) => handleFormChange("creditLimitRequested", e.target.value)}
-                          style={{
-                            width: "100%",
-                            padding: "8px 12px",
-                            border: `1px solid ${formErrors.creditLimitRequested ? DANGER : "#e0e0e0"}`,
-                            borderRadius: "4px",
-                            fontSize: "13px",
-                          }}
-                          placeholder="0"
-                        />
-                      </div>
+                    <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+                      <input
+                        type="text"
+                        readOnly
+                        value={APPLY_LINK}
+                        style={{ flex: 1, padding: "10px 12px", border: `1px solid #d0d5d9`, borderRadius: "4px", fontSize: "13px", color: YOKOGAWA_DARK, background: GRAY_LIGHT, fontFamily: "monospace" }}
+                      />
+                      <button
+                        onClick={copyApplyLink}
+                        style={{ padding: "10px 16px", background: linkCopied ? SUCCESS : YOKOGAWA_YELLOW, color: linkCopied ? "white" : YOKOGAWA_DARK, border: "none", borderRadius: "4px", fontSize: "13px", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", whiteSpace: "nowrap" }}
+                      >
+                        <Copy style={{ width: "14px", height: "14px" }} /> {linkCopied ? "Copied!" : "Copy Link"}
+                      </button>
+                      <a
+                        href={APPLY_LINK}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ padding: "10px 16px", border: `1px solid #d0d5d9`, borderRadius: "4px", fontSize: "13px", fontWeight: 500, color: YOKOGAWA_DARK, display: "flex", alignItems: "center", gap: "6px", whiteSpace: "nowrap" }}
+                      >
+                        <ExternalLink style={{ width: "14px", height: "14px" }} /> Preview
+                      </a>
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px", marginBottom: "20px" }}>
-                      <div>
-                        <label style={{ fontSize: "12px", fontWeight: 700, color: YOKOGAWA_DARK, display: "block", marginBottom: "6px" }}>City</label>
-                        <input type="text" value={form.city} onChange={(e) => handleFormChange("city", e.target.value)} style={{ width: "100%", padding: "8px 12px", border: `1px solid #e0e0e0`, borderRadius: "4px", fontSize: "13px" }} />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: "12px", fontWeight: 700, color: YOKOGAWA_DARK, display: "block", marginBottom: "6px" }}>State</label>
-                        <input type="text" value={form.state} onChange={(e) => handleFormChange("state", e.target.value)} style={{ width: "100%", padding: "8px 12px", border: `1px solid #e0e0e0`, borderRadius: "4px", fontSize: "13px" }} />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: "12px", fontWeight: 700, color: YOKOGAWA_DARK, display: "block", marginBottom: "6px" }}>Zip</label>
-                        <input type="text" value={form.zip} onChange={(e) => handleFormChange("zip", e.target.value)} style={{ width: "100%", padding: "8px 12px", border: `1px solid #e0e0e0`, borderRadius: "4px", fontSize: "13px" }} />
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={submitForm}
-                      style={{
-                        padding: "12px 24px",
-                        background: YOKOGAWA_YELLOW,
-                        color: YOKOGAWA_DARK,
-                        border: "none",
-                        borderRadius: "4px",
-                        fontSize: "13px",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.3px",
-                      }}
-                    >
-                      Submit Application
-                    </button>
+                    <p style={{ fontSize: "12px", color: GRAY_MEDIUM, background: GRAY_LIGHT, padding: "12px", borderRadius: "4px", borderLeft: `4px solid ${YOKOGAWA_YELLOW}`, margin: 0 }}>
+                      Next step: package this page as an SPFx web part for the Rep Portal, and build the AR
+                      agent that picks up submissions from the Queue below.
+                    </p>
                   </div>
                 </div>
               )}
@@ -573,6 +467,7 @@ export default function ARDashboard() {
                         <thead>
                           <tr style={{ background: GRAY_LIGHT, borderBottom: `1px solid #e0e0e0` }}>
                             <th style={{ textAlign: "left", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase" }}>Company</th>
+                            <th style={{ textAlign: "left", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase" }}>Source</th>
                             <th style={{ textAlign: "left", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase" }}>Requested Limit</th>
                             <th style={{ textAlign: "left", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase" }}>Risk Score</th>
                             <th style={{ textAlign: "left", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase" }}>Status</th>
@@ -581,42 +476,87 @@ export default function ARDashboard() {
                         </thead>
                         <tbody>
                           {submittedRequests.map((req) => (
-                            <tr key={req.id} style={{ borderBottom: `1px solid #f0f0f0` }}>
-                              <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600 }}>{req.companyName}</td>
-                              <td style={{ padding: "14px 16px", fontSize: "13px" }}>${Number(req.creditLimitRequested).toLocaleString()}</td>
-                              <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600, color: req.riskScore >= AUTO_APPROVE_MIN_SCORE ? SUCCESS : WARNING }}>{req.riskScore}</td>
-                              <td style={{ padding: "14px 16px" }}>
-                                <span style={{
-                                  display: "inline-block",
-                                  padding: "4px 10px",
-                                  borderRadius: "3px",
-                                  fontSize: "11px",
-                                  fontWeight: 700,
-                                  background: req.status === "auto_approved" ? YOKOGAWA_YELLOW : WARNING_LIGHT,
-                                  color: req.status === "auto_approved" ? YOKOGAWA_DARK : WARNING,
-                                  textTransform: "uppercase",
-                                }}>
-                                  {req.status === "auto_approved" ? "Auto-Approved" : "Submitted"}
-                                </span>
-                              </td>
-                              <td style={{ padding: "14px 16px", textAlign: "right" }}>
-                                <button
-                                  onClick={() => pushToSap(req.id)}
-                                  style={{
-                                    padding: "6px 12px",
-                                    background: SUCCESS,
-                                    color: "white",
-                                    border: "none",
+                            <React.Fragment key={req.id}>
+                              <tr style={{ borderBottom: `1px solid #f0f0f0`, cursor: "pointer" }} onClick={() => setExpandedRow(expandedRow === req.id ? null : req.id)}>
+                                <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600, color: YOKOGAWA_BLUE }}>{req.companyName}</td>
+                                <td style={{ padding: "14px 16px", fontSize: "11px", color: GRAY_MEDIUM }}>
+                                  {req.source === "customer_link" ? "Customer link" : "Internal"}
+                                </td>
+                                <td style={{ padding: "14px 16px", fontSize: "13px" }}>${Number(req.creditLimitRequested).toLocaleString()}</td>
+                                <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600, color: req.riskScore >= AUTO_APPROVE_MIN_SCORE ? SUCCESS : WARNING }}>{req.riskScore}</td>
+                                <td style={{ padding: "14px 16px" }}>
+                                  <span style={{
+                                    display: "inline-block",
+                                    padding: "4px 10px",
                                     borderRadius: "3px",
                                     fontSize: "11px",
                                     fontWeight: 700,
-                                    cursor: "pointer",
-                                  }}
-                                >
-                                  Push to SAP
-                                </button>
-                              </td>
-                            </tr>
+                                    background: req.status === "auto_approved" ? YOKOGAWA_YELLOW : WARNING_LIGHT,
+                                    color: req.status === "auto_approved" ? YOKOGAWA_DARK : WARNING,
+                                    textTransform: "uppercase",
+                                  }}>
+                                    {req.status === "auto_approved" ? "Auto-Approved" : "Needs Review"}
+                                  </span>
+                                </td>
+                                <td style={{ padding: "14px 16px", textAlign: "right" }}>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); pushToSap(req.id); }}
+                                    style={{
+                                      padding: "6px 12px",
+                                      background: SUCCESS,
+                                      color: "white",
+                                      border: "none",
+                                      borderRadius: "3px",
+                                      fontSize: "11px",
+                                      fontWeight: 700,
+                                      cursor: "pointer",
+                                    }}
+                                  >
+                                    Push to SAP
+                                  </button>
+                                </td>
+                              </tr>
+                              {expandedRow === req.id && (
+                                <tr>
+                                  <td colSpan={6} style={{ padding: "20px 24px", background: GRAY_LIGHT, borderBottom: `1px solid #e0e0e0` }}>
+                                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "20px" }}>
+                                      <div>
+                                        <p style={{ fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase", margin: "0 0 8px" }}>Company</p>
+                                        <p style={{ fontSize: "12px", color: GRAY_MEDIUM, margin: 0, lineHeight: 1.6 }}>
+                                          {req.address}, {req.city}, {req.state} {req.zip}<br />
+                                          D&amp;B: {req.dnbNumber}<br />
+                                          Accounting: {req.accountingContact} · {req.accountingPhone}<br />
+                                          {req.accountingEmail}
+                                        </p>
+                                      </div>
+                                      {req.tradeRefs?.some(r => r.name) && (
+                                        <div>
+                                          <p style={{ fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase", margin: "0 0 8px" }}>Trade References</p>
+                                          {req.tradeRefs.filter(r => r.name).map((r) => (
+                                            <p key={r.id} style={{ fontSize: "12px", color: GRAY_MEDIUM, margin: "0 0 6px" }}>{r.name} — {r.contact} {r.phone}</p>
+                                          ))}
+                                        </div>
+                                      )}
+                                      {req.bankRefs?.some(r => r.name) && (
+                                        <div>
+                                          <p style={{ fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase", margin: "0 0 8px" }}>Bank References</p>
+                                          {req.bankRefs.filter(r => r.name).map((r) => (
+                                            <p key={r.id} style={{ fontSize: "12px", color: GRAY_MEDIUM, margin: "0 0 6px" }}>{r.name} — Acct {r.accountNumber}</p>
+                                          ))}
+                                        </div>
+                                      )}
+                                      {req.signatureDataUrl && (
+                                        <div>
+                                          <p style={{ fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase", margin: "0 0 8px" }}>Signature</p>
+                                          <img src={req.signatureDataUrl} alt="Customer signature" style={{ maxWidth: "220px", border: "1px solid #e0e0e0", borderRadius: "4px", background: "white" }} />
+                                          <p style={{ fontSize: "12px", color: GRAY_MEDIUM, margin: "8px 0 0" }}>{req.signerName}, {req.signerTitle} — {req.signedDate}</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
                           ))}
                         </tbody>
                       </table>
