@@ -41,9 +41,6 @@ src/
 
 ## Known TODOs / next steps
 
-- [ ] **Color scheme** — currently Yokogawa yellow/dark. Update
-      `src/data/constants.js` to match the Order Status Transparency
-      project's palette.
 - [ ] **Replace mock data with real sources** (`src/data/mockData.js`):
   - `mockHolds` → SAP Credit Hold Report
   - `mockDelinquent` → Collections Report (overdue invoices)

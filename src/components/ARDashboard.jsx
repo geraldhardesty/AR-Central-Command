@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 
 import {
-  YOKOGAWA_YELLOW, YOKOGAWA_DARK, DANGER, DANGER_LIGHT, WARNING, WARNING_LIGHT,
+  YOKOGAWA_YELLOW, YOKOGAWA_BLUE, YOKOGAWA_DARK, DANGER, DANGER_LIGHT, WARNING, WARNING_LIGHT,
   SUCCESS, SUCCESS_LIGHT, GRAY_LIGHT, GRAY_MEDIUM,
   AUTO_APPROVE_MIN_SCORE, AUTO_APPROVE_MAX_LIMIT, AUTO_APPROVE_LIST,
 } from "../data/constants.js";
@@ -102,39 +102,51 @@ export default function ARDashboard() {
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         button { cursor: pointer; }
         input, select, textarea { font-family: inherit; }
-        a { color: #0066cc; text-decoration: none; }
+        a { color: ${YOKOGAWA_BLUE}; text-decoration: none; }
       `}</style>
 
       {/* Top bar */}
-      <div style={{ background: YOKOGAWA_DARK, color: "white", padding: "12px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ fontWeight: 700, fontSize: "14px", letterSpacing: "1px" }}>YOKOGAWA</div>
-        <div>
-          <a href="#" style={{ color: "#ccc", fontSize: "12px", marginLeft: "24px" }}>Support</a>
-          <a href="#" style={{ color: "#ccc", fontSize: "12px", marginLeft: "24px" }}>Docs</a>
+      <div style={{ background: YOKOGAWA_BLUE, color: "white", padding: "14px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
+            <span style={{ fontWeight: 700, fontSize: "16px", letterSpacing: "0.5px" }}>YOKOGAWA</span>
+            <span style={{ width: "11px", height: "11px", background: YOKOGAWA_YELLOW, transform: "rotate(45deg)", display: "inline-block", flexShrink: 0 }} />
+          </div>
+          <span style={{ width: "1px", height: "18px", background: "rgba(255,255,255,0.35)" }} />
+          <span style={{ fontSize: "14px", color: "rgba(255,255,255,0.9)", fontWeight: 500 }}>AR & Credit Management</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+          <span style={{
+            border: "1px solid rgba(255,255,255,0.4)",
+            borderRadius: "3px",
+            padding: "3px 8px",
+            fontSize: "10px",
+            fontWeight: 700,
+            letterSpacing: "0.5px",
+            color: "rgba(255,255,255,0.85)",
+          }}>DEMO DATA</span>
+          <a href="#" style={{ color: "rgba(255,255,255,0.75)", fontSize: "12px" }}>Support</a>
+          <a href="#" style={{ color: "rgba(255,255,255,0.75)", fontSize: "12px" }}>Docs</a>
         </div>
       </div>
+      <div style={{ height: "3px", background: YOKOGAWA_YELLOW }} />
 
       <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
         {/* Header */}
-        <div style={{ background: "white", borderBottom: `2px solid ${YOKOGAWA_YELLOW}`, padding: "40px 24px", position: "relative" }}>
-          <div style={{ position: "absolute", top: 0, left: 0, width: "8px", height: "8px", background: YOKOGAWA_YELLOW }} />
-          
+        <div style={{ background: "white", padding: "40px 24px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "32px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-              <div style={{ width: "32px", height: "32px", background: YOKOGAWA_YELLOW, borderRadius: "4px", boxShadow: `0 0 16px rgba(255, 238, 1, 0.4)` }} />
-              <div>
-                <h1 style={{ fontSize: "32px", fontWeight: 700, color: YOKOGAWA_DARK, margin: 0, marginBottom: "8px", letterSpacing: "-0.5px" }}>
-                  AR & Credit Management
-                </h1>
-                <p style={{ fontSize: "14px", color: GRAY_MEDIUM, margin: 0 }}>
-                  Credit holds, collections, auto-approvals, and customer onboarding
-                </p>
-              </div>
+            <div>
+              <h1 style={{ fontSize: "32px", fontWeight: 700, color: YOKOGAWA_DARK, margin: 0, marginBottom: "8px", letterSpacing: "-0.5px" }}>
+                AR & Credit Management
+              </h1>
+              <p style={{ fontSize: "14px", color: GRAY_MEDIUM, margin: 0 }}>
+                Credit holds, collections, auto-approvals, and customer onboarding
+              </p>
             </div>
             <div style={{ display: "flex", gap: "12px" }}>
               <button style={{
                 padding: "10px 16px",
-                border: `1px solid ${GRAY_MEDIUM}`,
+                border: `1px solid #d0d5d9`,
                 borderRadius: "4px",
                 background: "white",
                 fontSize: "13px",
@@ -299,7 +311,7 @@ export default function ARDashboard() {
                       <tbody>
                         {filteredHolds.map((hold) => (
                           <tr key={hold.id} style={{ borderBottom: `1px solid #f0f0f0` }}>
-                            <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600, color: "#0066cc" }}>{hold.id}</td>
+                            <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600, color: YOKOGAWA_BLUE }}>{hold.id}</td>
                             <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600 }}>{hold.customer}</td>
                             <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600 }}>${hold.amount.toLocaleString()}</td>
                             <td style={{ padding: "14px 16px" }}><StatusBadge status={hold.status} /></td>
@@ -332,7 +344,7 @@ export default function ARDashboard() {
                       <tbody>
                         {mockDelinquent.map((d) => (
                           <tr key={d.invoiceNumber} style={{ borderBottom: `1px solid #f0f0f0` }}>
-                            <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600, color: "#0066cc" }}>{d.invoiceNumber}</td>
+                            <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600, color: YOKOGAWA_BLUE }}>{d.invoiceNumber}</td>
                             <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600 }}>{d.customer}</td>
                             <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600 }}>${d.amount.toLocaleString()}</td>
                             <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600, color: d.daysOverdue > 60 ? DANGER : WARNING }}>{d.daysOverdue}</td>
@@ -636,7 +648,7 @@ export default function ARDashboard() {
                         <tbody>
                           {sapRecords.map((rec) => (
                             <tr key={rec.id} style={{ borderBottom: `1px solid #f0f0f0` }}>
-                              <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600, color: "#0066cc" }}>{rec.sapId}</td>
+                              <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600, color: YOKOGAWA_BLUE }}>{rec.sapId}</td>
                               <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600 }}>{rec.companyName}</td>
                               <td style={{ padding: "14px 16px", fontSize: "13px" }}>{rec.dnbNumber}</td>
                               <td style={{ padding: "14px 16px", textAlign: "right", fontSize: "13px", fontWeight: 600 }}>${Number(rec.creditLimitRequested).toLocaleString()}</td>
