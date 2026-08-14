@@ -1,18 +1,18 @@
 import React from "react";
 import {
-  YOKOGAWA_YELLOW, YOKOGAWA_DARK, DANGER_LIGHT, WARNING_LIGHT, SUCCESS_LIGHT,
+  YOKOGAWA_BLUE, DANGER_LIGHT, WARNING_LIGHT, SUCCESS_LIGHT,
   DANGER, WARNING, SUCCESS, GRAY_MEDIUM,
 } from "../data/constants.js";
 
-export default function MetricCard({ icon: Icon, label, value, sublabel, color = "yellow" }) {
+export default function MetricCard({ icon: Icon, label, value, sublabel, color = "blue" }) {
   const bgMap = {
-    yellow: YOKOGAWA_YELLOW + "20",
+    blue: YOKOGAWA_BLUE + "1a",
     danger: DANGER_LIGHT,
     warning: WARNING_LIGHT,
     success: SUCCESS_LIGHT,
   };
   const colorMap = {
-    yellow: YOKOGAWA_DARK,
+    blue: YOKOGAWA_BLUE,
     danger: DANGER,
     warning: WARNING,
     success: SUCCESS,

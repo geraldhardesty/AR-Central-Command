@@ -9,10 +9,10 @@ import {
 import {
   YOKOGAWA_YELLOW, YOKOGAWA_BLUE, YOKOGAWA_DARK, DANGER, DANGER_LIGHT, WARNING, WARNING_LIGHT,
   SUCCESS, SUCCESS_LIGHT, GRAY_LIGHT, GRAY_MEDIUM,
-  AUTO_APPROVE_MIN_SCORE, AUTO_APPROVE_MAX_LIMIT, AUTO_APPROVE_LIST,
+  AUTO_APPROVE_MIN_SCORE,
 } from "../data/constants.js";
-import { mockHolds, mockDelinquent } from "../data/mockData.js";
-import { loadPublicApplications } from "../data/utils.js";
+import { mockHolds, mockDelinquent, mockExistingCredit, WHITELISTED_ACCOUNTS } from "../data/mockData.js";
+import { loadPublicApplications, isWhitelisted } from "../data/utils.js";
 import MetricCard from "./MetricCard.jsx";
 import StatusBadge from "./StatusBadge.jsx";
 
@@ -64,16 +64,20 @@ export default function ARDashboard() {
     setSapRecords([...sapRecords, newSapRecord]);
   };
 
-  // Calculate metrics
+  // Calculate metrics.
+  // A whitelisted account only auto-approves a "static" (over-limit) hold —
+  // an "oldest" (past-due invoice) hold is real delinquency and always
+  // needs a human, whitelisted or not.
+  const isReleaseReady = (h) => isWhitelisted(h.customerId) && h.holdReason === "static";
+
   const totalOnHold = mockHolds.length;
   const totalHoldAmount = mockHolds.reduce((sum, h) => sum + h.amount, 0);
-  const autoApproveReady = mockHolds.filter(h => AUTO_APPROVE_LIST.includes(h.rep) && h.status === "pending_approval").length;
+  const autoApproveReady = mockHolds.filter(isReleaseReady).length;
   const delinquentCount = mockDelinquent.length;
   const pendingRequests = submittedRequests.filter(r => r.status === "submitted").length;
 
   const filteredHolds = useMemo(() => {
-    if (filter === "all") return mockHolds;
-    if (filter === "auto_approve") return mockHolds.filter(h => AUTO_APPROVE_LIST.includes(h.rep));
+    if (filter === "auto_approve") return mockHolds.filter(isReleaseReady);
     return mockHolds;
   }, [filter]);
 
@@ -108,10 +112,9 @@ export default function ARDashboard() {
             color: "rgba(255,255,255,0.85)",
           }}>DEMO DATA</span>
           <a href="#" style={{ color: "rgba(255,255,255,0.75)", fontSize: "12px" }}>Support</a>
-          <a href="#" style={{ color: "rgba(255,255,255,0.75)", fontSize: "12px" }}>Docs</a>
+          <a href="?docs" style={{ color: "rgba(255,255,255,0.75)", fontSize: "12px" }}>Docs</a>
         </div>
       </div>
-      <div style={{ height: "3px", background: YOKOGAWA_YELLOW }} />
 
       <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
         {/* Header */}
@@ -147,7 +150,7 @@ export default function ARDashboard() {
           {/* Metrics */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px" }}>
             <MetricCard icon={AlertCircle} label="On Hold" value={totalOnHold} sublabel={`$${(totalHoldAmount / 1000).toFixed(0)}K`} color="danger" />
-            <MetricCard icon={Unlock} label="Auto-Approve Ready" value={autoApproveReady} sublabel={`${AUTO_APPROVE_LIST.length} whitelisted`} color="yellow" />
+            <MetricCard icon={Unlock} label="Auto-Approve Ready" value={autoApproveReady} sublabel={`${WHITELISTED_ACCOUNTS.length} whitelisted`} color="blue" />
             <MetricCard icon={Clock} label="Delinquent" value={delinquentCount} sublabel="Aging tracking" color="danger" />
             <MetricCard icon={Plus} label="Pending Onboarding" value={pendingRequests} sublabel="New customer approvals" color="warning" />
           </div>
@@ -172,7 +175,7 @@ export default function ARDashboard() {
                 fontSize: "14px",
                 fontWeight: mainTab === tab.id ? 600 : 500,
                 color: mainTab === tab.id ? YOKOGAWA_DARK : GRAY_MEDIUM,
-                borderBottom: mainTab === tab.id ? `2px solid ${YOKOGAWA_YELLOW}` : "none",
+                borderBottom: mainTab === tab.id ? `2px solid ${YOKOGAWA_BLUE}` : "none",
                 cursor: "pointer",
                 transition: "all 0.2s",
               }}
@@ -192,6 +195,7 @@ export default function ARDashboard() {
                 {[
                   { id: "holds", label: "Credit Holds" },
                   { id: "delinquent", label: "Delinquent Aging" },
+                  { id: "existing_credit", label: "Existing Credit" },
                   { id: "automation", label: "Email Automation" },
                 ].map(tab => (
                   <button
@@ -200,8 +204,8 @@ export default function ARDashboard() {
                     style={{
                       padding: "8px 12px",
                       border: "none",
-                      background: subTab === tab.id ? YOKOGAWA_YELLOW : "transparent",
-                      color: subTab === tab.id ? YOKOGAWA_DARK : GRAY_MEDIUM,
+                      background: subTab === tab.id ? YOKOGAWA_BLUE : "transparent",
+                      color: subTab === tab.id ? "white" : GRAY_MEDIUM,
                       borderRadius: "3px",
                       fontSize: "13px",
                       fontWeight: subTab === tab.id ? 600 : 500,
@@ -247,8 +251,7 @@ export default function ARDashboard() {
 
                   {autoApproveReady > 0 && (
                     <div style={{
-                      background: YOKOGAWA_YELLOW,
-                      border: `1px solid #e6d500`,
+                      background: YOKOGAWA_BLUE,
                       borderRadius: "4px",
                       padding: "16px",
                       marginBottom: "20px",
@@ -257,17 +260,17 @@ export default function ARDashboard() {
                       justifyContent: "space-between",
                     }}>
                       <div>
-                        <p style={{ fontSize: "14px", fontWeight: 700, color: YOKOGAWA_DARK, margin: 0, marginBottom: "4px" }}>
+                        <p style={{ fontSize: "14px", fontWeight: 700, color: "white", margin: 0, marginBottom: "4px" }}>
                           {autoApproveReady} order{autoApproveReady !== 1 ? "s" : ""} ready to release
                         </p>
-                        <p style={{ fontSize: "12px", color: YOKOGAWA_DARK, margin: 0, opacity: 0.8 }}>
-                          {AUTO_APPROVE_LIST.join(", ")} — whitelisted for auto-approval
+                        <p style={{ fontSize: "12px", color: "white", margin: 0, opacity: 0.8 }}>
+                          Whitelisted account, held only on a static credit limit check — see Docs for the list
                         </p>
                       </div>
                       <button style={{
                         padding: "10px 16px",
-                        background: YOKOGAWA_DARK,
-                        color: YOKOGAWA_YELLOW,
+                        background: "white",
+                        color: YOKOGAWA_BLUE,
                         border: "none",
                         borderRadius: "4px",
                         fontSize: "13px",
@@ -279,27 +282,47 @@ export default function ARDashboard() {
                     </div>
                   )}
 
-                  <div style={{ background: "white", border: `1px solid #e0e0e0`, borderRadius: "4px", overflow: "hidden" }}>
+                  <div style={{ background: "white", border: `1px solid #e0e0e0`, borderRadius: "4px", overflow: "auto" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
                         <tr style={{ background: GRAY_LIGHT, borderBottom: `1px solid #e0e0e0` }}>
-                          <th style={{ textAlign: "left", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase" }}>Order</th>
-                          <th style={{ textAlign: "left", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase" }}>Customer</th>
-                          <th style={{ textAlign: "left", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase" }}>Amount</th>
-                          <th style={{ textAlign: "left", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase" }}>Status</th>
-                          <th style={{ textAlign: "right", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase" }}>Days</th>
+                          <th style={{ textAlign: "left", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase", whiteSpace: "nowrap" }}>Order</th>
+                          <th style={{ textAlign: "left", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase", whiteSpace: "nowrap" }}>Customer</th>
+                          <th style={{ textAlign: "left", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase", whiteSpace: "nowrap" }}>Customer ID</th>
+                          <th style={{ textAlign: "left", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase", whiteSpace: "nowrap" }}>Order Date</th>
+                          <th style={{ textAlign: "right", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase", whiteSpace: "nowrap" }}>Order Amount</th>
+                          <th style={{ textAlign: "right", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase", whiteSpace: "nowrap" }}>Credit Limit</th>
+                          <th style={{ textAlign: "right", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase", whiteSpace: "nowrap" }}>Available Credit</th>
+                          <th style={{ textAlign: "left", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase", whiteSpace: "nowrap" }}>Status</th>
+                          <th style={{ textAlign: "right", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase", whiteSpace: "nowrap" }}>Days</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredHolds.map((hold) => (
-                          <tr key={hold.id} style={{ borderBottom: `1px solid #f0f0f0` }}>
-                            <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600, color: YOKOGAWA_BLUE }}>{hold.id}</td>
-                            <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600 }}>{hold.customer}</td>
-                            <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600 }}>${hold.amount.toLocaleString()}</td>
-                            <td style={{ padding: "14px 16px" }}><StatusBadge status={hold.status} /></td>
-                            <td style={{ padding: "14px 16px", textAlign: "right", fontSize: "13px", fontWeight: 600, color: hold.daysOnHold > 7 ? DANGER : WARNING }}>{hold.daysOnHold}</td>
-                          </tr>
-                        ))}
+                        {filteredHolds.map((hold) => {
+                          const whitelisted = isWhitelisted(hold.customerId);
+                          return (
+                            <tr key={hold.id} style={{ borderBottom: `1px solid #f0f0f0`, background: whitelisted ? `${YOKOGAWA_BLUE}0d` : "transparent" }}>
+                              <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600, color: YOKOGAWA_BLUE, whiteSpace: "nowrap" }}>{hold.id}</td>
+                              <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600, whiteSpace: "nowrap" }}>
+                                {hold.customer}
+                                {whitelisted && (
+                                  <span style={{ marginLeft: "8px", fontSize: "10px", fontWeight: 700, background: YOKOGAWA_BLUE, color: "white", padding: "2px 6px", borderRadius: "2px", textTransform: "uppercase" }}>
+                                    Whitelisted
+                                  </span>
+                                )}
+                              </td>
+                              <td style={{ padding: "14px 16px", fontSize: "12px", color: GRAY_MEDIUM, fontFamily: "monospace", whiteSpace: "nowrap" }}>{hold.customerId}</td>
+                              <td style={{ padding: "14px 16px", fontSize: "13px", color: GRAY_MEDIUM, whiteSpace: "nowrap" }}>{hold.orderDate}</td>
+                              <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600, textAlign: "right", whiteSpace: "nowrap" }}>${hold.amount.toLocaleString()}</td>
+                              <td style={{ padding: "14px 16px", fontSize: "13px", textAlign: "right", whiteSpace: "nowrap" }}>${hold.creditLimit.toLocaleString()}</td>
+                              <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600, textAlign: "right", whiteSpace: "nowrap", color: hold.availableCredit < 0 ? DANGER : YOKOGAWA_DARK }}>
+                                {hold.availableCredit < 0 ? "-" : ""}${Math.abs(hold.availableCredit).toLocaleString()}
+                              </td>
+                              <td style={{ padding: "14px 16px" }}><StatusBadge status={hold.holdReason} /></td>
+                              <td style={{ padding: "14px 16px", textAlign: "right", fontSize: "13px", fontWeight: 600, color: hold.daysOnHold > 7 ? DANGER : WARNING, whiteSpace: "nowrap" }}>{hold.daysOnHold}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -339,12 +362,55 @@ export default function ARDashboard() {
                 </div>
               )}
 
+              {/* Existing Credit Sub-tab — accounts on the hold list due to a credit balance, not a blocked order */}
+              {subTab === "existing_credit" && (
+                <div>
+                  <p style={{ fontSize: "13px", color: GRAY_MEDIUM, marginBottom: "16px" }}>
+                    Accounts carrying a credit balance (overpayment or credit memo) that needs review — refund,
+                    or apply to a future invoice.
+                  </p>
+                  <div style={{ background: "white", border: `1px solid #e0e0e0`, borderRadius: "4px", overflow: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead>
+                        <tr style={{ background: GRAY_LIGHT, borderBottom: `1px solid #e0e0e0` }}>
+                          <th style={{ textAlign: "left", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase", whiteSpace: "nowrap" }}>Customer</th>
+                          <th style={{ textAlign: "left", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase", whiteSpace: "nowrap" }}>Customer ID</th>
+                          <th style={{ textAlign: "right", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase", whiteSpace: "nowrap" }}>Credit Balance</th>
+                          <th style={{ textAlign: "left", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase", whiteSpace: "nowrap" }}>Reason</th>
+                          <th style={{ textAlign: "left", padding: "14px 16px", fontSize: "11px", fontWeight: 700, color: YOKOGAWA_DARK, textTransform: "uppercase", whiteSpace: "nowrap" }}>Since</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {mockExistingCredit.map((c) => {
+                          const whitelisted = isWhitelisted(c.customerId);
+                          return (
+                            <tr key={c.customerId} style={{ borderBottom: `1px solid #f0f0f0`, background: whitelisted ? `${YOKOGAWA_BLUE}0d` : "transparent" }}>
+                              <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600, whiteSpace: "nowrap" }}>
+                                {c.customer}
+                                {whitelisted && (
+                                  <span style={{ marginLeft: "8px", fontSize: "10px", fontWeight: 700, background: YOKOGAWA_BLUE, color: "white", padding: "2px 6px", borderRadius: "2px", textTransform: "uppercase" }}>
+                                    Whitelisted
+                                  </span>
+                                )}
+                              </td>
+                              <td style={{ padding: "14px 16px", fontSize: "12px", color: GRAY_MEDIUM, fontFamily: "monospace", whiteSpace: "nowrap" }}>{c.customerId}</td>
+                              <td style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600, textAlign: "right", color: SUCCESS, whiteSpace: "nowrap" }}>${c.creditBalance.toLocaleString()}</td>
+                              <td style={{ padding: "14px 16px", fontSize: "13px" }}>{c.reason}</td>
+                              <td style={{ padding: "14px 16px", fontSize: "13px", color: GRAY_MEDIUM, whiteSpace: "nowrap" }}>{c.since}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
               {/* Email Automation Sub-tab */}
               {subTab === "automation" && (
                 <div>
                   <div style={{
-                    background: YOKOGAWA_YELLOW,
-                    border: `1px solid #e6d500`,
+                    background: YOKOGAWA_BLUE,
                     borderRadius: "4px",
                     padding: "16px",
                     marginBottom: "24px",
@@ -353,17 +419,17 @@ export default function ARDashboard() {
                     justifyContent: "space-between",
                   }}>
                     <div>
-                      <p style={{ fontSize: "14px", fontWeight: 700, color: YOKOGAWA_DARK, margin: 0, marginBottom: "4px" }}>
+                      <p style={{ fontSize: "14px", fontWeight: 700, color: "white", margin: 0, marginBottom: "4px" }}>
                         3 reminders scheduled for Monday
                       </p>
-                      <p style={{ fontSize: "12px", color: YOKOGAWA_DARK, margin: 0, opacity: 0.8 }}>
+                      <p style={{ fontSize: "12px", color: "white", margin: 0, opacity: 0.8 }}>
                         Auto-email workflow active
                       </p>
                     </div>
                     <button style={{
                       padding: "10px 16px",
-                      background: YOKOGAWA_DARK,
-                      color: YOKOGAWA_YELLOW,
+                      background: "white",
+                      color: YOKOGAWA_BLUE,
                       border: "none",
                       borderRadius: "4px",
                       fontSize: "13px",
@@ -373,7 +439,7 @@ export default function ARDashboard() {
                       Send Now
                     </button>
                   </div>
-                  <p style={{ fontSize: "12px", color: GRAY_MEDIUM, background: "white", padding: "12px", borderRadius: "4px", borderLeft: `4px solid ${YOKOGAWA_YELLOW}`, margin: 0 }}>
+                  <p style={{ fontSize: "12px", color: GRAY_MEDIUM, background: "white", padding: "12px", borderRadius: "4px", borderLeft: `4px solid ${YOKOGAWA_BLUE}`, margin: 0 }}>
                     Email automation configured. Next batch sends Monday 8:00 AM.
                   </p>
                 </div>
@@ -397,8 +463,8 @@ export default function ARDashboard() {
                     style={{
                       padding: "8px 12px",
                       border: "none",
-                      background: subTab === tab.id ? YOKOGAWA_YELLOW : "transparent",
-                      color: subTab === tab.id ? YOKOGAWA_DARK : GRAY_MEDIUM,
+                      background: subTab === tab.id ? YOKOGAWA_BLUE : "transparent",
+                      color: subTab === tab.id ? "white" : GRAY_MEDIUM,
                       borderRadius: "3px",
                       fontSize: "13px",
                       fontWeight: subTab === tab.id ? 600 : 500,
@@ -431,7 +497,7 @@ export default function ARDashboard() {
                       />
                       <button
                         onClick={copyApplyLink}
-                        style={{ padding: "10px 16px", background: linkCopied ? SUCCESS : YOKOGAWA_YELLOW, color: linkCopied ? "white" : YOKOGAWA_DARK, border: "none", borderRadius: "4px", fontSize: "13px", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", whiteSpace: "nowrap" }}
+                        style={{ padding: "10px 16px", background: linkCopied ? SUCCESS : YOKOGAWA_BLUE, color: "white", border: "none", borderRadius: "4px", fontSize: "13px", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", whiteSpace: "nowrap" }}
                       >
                         <Copy style={{ width: "14px", height: "14px" }} /> {linkCopied ? "Copied!" : "Copy Link"}
                       </button>
@@ -445,7 +511,7 @@ export default function ARDashboard() {
                       </a>
                     </div>
 
-                    <p style={{ fontSize: "12px", color: GRAY_MEDIUM, background: GRAY_LIGHT, padding: "12px", borderRadius: "4px", borderLeft: `4px solid ${YOKOGAWA_YELLOW}`, margin: 0 }}>
+                    <p style={{ fontSize: "12px", color: GRAY_MEDIUM, background: GRAY_LIGHT, padding: "12px", borderRadius: "4px", borderLeft: `4px solid ${YOKOGAWA_BLUE}`, margin: 0 }}>
                       Next step: package this page as an SPFx web part for the Rep Portal, and build the AR
                       agent that picks up submissions from the Queue below.
                     </p>
@@ -491,8 +557,8 @@ export default function ARDashboard() {
                                     borderRadius: "3px",
                                     fontSize: "11px",
                                     fontWeight: 700,
-                                    background: req.status === "auto_approved" ? YOKOGAWA_YELLOW : WARNING_LIGHT,
-                                    color: req.status === "auto_approved" ? YOKOGAWA_DARK : WARNING,
+                                    background: req.status === "auto_approved" ? YOKOGAWA_BLUE : WARNING_LIGHT,
+                                    color: req.status === "auto_approved" ? "white" : WARNING,
                                     textTransform: "uppercase",
                                   }}>
                                     {req.status === "auto_approved" ? "Auto-Approved" : "Needs Review"}
@@ -593,7 +659,7 @@ export default function ARDashboard() {
                               <td style={{ padding: "14px 16px", fontSize: "13px" }}>{rec.dnbNumber}</td>
                               <td style={{ padding: "14px 16px", textAlign: "right", fontSize: "13px", fontWeight: 600 }}>${Number(rec.creditLimitRequested).toLocaleString()}</td>
                               <td style={{ padding: "14px 16px", textAlign: "right", fontSize: "11px", color: GRAY_MEDIUM }}>
-                                {rec.autoApproved && <span style={{ marginRight: "8px", fontSize: "10px", fontWeight: 700, background: YOKOGAWA_YELLOW, color: YOKOGAWA_DARK, padding: "2px 6px", borderRadius: "2px", textTransform: "uppercase" }}>auto</span>}
+                                {rec.autoApproved && <span style={{ marginRight: "8px", fontSize: "10px", fontWeight: 700, background: YOKOGAWA_BLUE, color: "white", padding: "2px 6px", borderRadius: "2px", textTransform: "uppercase" }}>auto</span>}
                                 {new Date(rec.sapPushedAt).toLocaleDateString()}
                               </td>
                             </tr>

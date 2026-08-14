@@ -1,14 +1,14 @@
 import React from "react";
-import { YOKOGAWA_YELLOW, YOKOGAWA_DARK, GRAY_LIGHT, GRAY_MEDIUM, SUCCESS_LIGHT, SUCCESS } from "../data/constants.js";
+import { DANGER, DANGER_LIGHT, WARNING, WARNING_LIGHT, GRAY_LIGHT, GRAY_MEDIUM } from "../data/constants.js";
 
+// SAP credit management hold reasons: "static" (this order exceeds the
+// static credit limit) or "oldest" (an open item / invoice is past due).
 export default function StatusBadge({ status }) {
   const statusMap = {
-    pending_approval: { label: "Ready", bg: YOKOGAWA_YELLOW, text: YOKOGAWA_DARK, weight: 700 },
-    review: { label: "Review", bg: GRAY_LIGHT, text: GRAY_MEDIUM },
-    pending_action: { label: "Action", bg: GRAY_LIGHT, text: GRAY_MEDIUM },
-    approved: { label: "Approved", bg: SUCCESS_LIGHT, text: SUCCESS },
+    static: { label: "Static Limit", bg: DANGER_LIGHT, text: DANGER },
+    oldest: { label: "Oldest Open Item", bg: WARNING_LIGHT, text: WARNING },
   };
-  const m = statusMap[status] || statusMap.review;
+  const m = statusMap[status] || { label: status || "Unknown", bg: GRAY_LIGHT, text: GRAY_MEDIUM };
   return (
     <span style={{
       display: "inline-flex",
@@ -17,11 +17,12 @@ export default function StatusBadge({ status }) {
       padding: "6px 12px",
       borderRadius: "3px",
       fontSize: "11px",
-      fontWeight: m.weight || 500,
+      fontWeight: 700,
       background: m.bg,
       color: m.text,
       textTransform: "uppercase",
       letterSpacing: "0.3px",
+      whiteSpace: "nowrap",
     }}>
       {m.label}
     </span>

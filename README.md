@@ -27,17 +27,18 @@ npm run preview    # preview the production build locally
 
 ```
 src/
-  App.jsx                    # routes ?apply -> CustomerCreditForm, else ARDashboard
+  App.jsx                    # routes ?apply -> CustomerCreditForm, ?docs -> DocsPage, else ARDashboard
   components/
     ARDashboard.jsx           # internal AR staff portal: tabs, state, layout
     CustomerCreditForm.jsx     # standalone, shareable customer credit application
-    SignaturePad.jsx            # canvas-based digital signature capture
-    MetricCard.jsx               # summary metric tile
-    StatusBadge.jsx               # status pill used in tables
+    DocsPage.jsx                # internal reference page (whitelisted accounts)
+    SignaturePad.jsx              # canvas-based digital signature capture
+    MetricCard.jsx                 # summary metric tile
+    StatusBadge.jsx                 # SAP hold-reason pill (Static / Oldest)
   data/
-    constants.js               # design tokens + business rule constants
-    mockData.js                 # mock holds / delinquent / customer data
-    utils.js                    # form helpers, duplicate-match logic, localStorage bridge
+    constants.js                 # design tokens + business rule constants
+    mockData.js                   # mock holds / delinquent / whitelist / credit balances
+    utils.js                      # form helpers, duplicate-match logic, localStorage bridge
   main.jsx
   index.css
 ```
@@ -60,6 +61,24 @@ customer (not AR staff) fills it out.
   merges any new ones into the Queue, tagged "Customer link" as the source.
   Click a row to expand full reference/signature detail.
 
+## Credit Holds
+
+Each hold's `holdReason` mirrors a real SAP credit management check type:
+
+- **`static`** — this order's value exceeds the account's static credit limit
+- **`oldest`** — the account has a past-due invoice (oldest open item check)
+
+An account is highlighted as **auto-approve ready** only when it's on
+`WHITELISTED_ACCOUNTS` (matched by Customer ID, in `mockData.js`) *and* the
+hold reason is `static` — a whitelisted account with a genuinely overdue
+invoice is never auto-approved. The whitelist itself is viewable at `?docs`,
+which stands in for a future admin-configurable settings screen.
+
+Customers can also land on the credit-hold list without a blocked order, if
+they're carrying a credit balance (overpayment or credit memo) that needs
+review — that's the separate **Existing Credit** tab, backed by
+`mockExistingCredit`.
+
 ## Known TODOs / next steps
 
 - [ ] **AR agent** — submissions land in the Queue as a to-do, but nothing
@@ -73,9 +92,11 @@ customer (not AR staff) fills it out.
 - [ ] **Replace mock data with real sources** (`src/data/mockData.js`):
   - `mockHolds` → SAP Credit Hold Report
   - `mockDelinquent` → Collections Report (overdue invoices)
+  - `mockExistingCredit` → SAP customer credit balance report
   - `EXISTING_CUSTOMERS` → SAP customer master / CRM lookup
-- [ ] **Whitelist config** — `AUTO_APPROVE_LIST` in `constants.js` is a fixed
-      array. Move this to an admin-configurable setting (backend/API-driven).
+- [ ] **Whitelist config** — `WHITELISTED_ACCOUNTS` in `mockData.js` is a
+      fixed array, currently viewable (not editable) at `?docs`. Move this to
+      a real admin-configurable setting (backend/API-driven).
 - [ ] **SAP push** — `pushToSap()` in `ARDashboard.jsx` currently fakes a SAP
       customer number. Wire this to the real XD01 integration layer.
 - [ ] **Email automation** — the "Send Now" / weekly scheduler UI is

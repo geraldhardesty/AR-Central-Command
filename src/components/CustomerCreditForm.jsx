@@ -152,7 +152,7 @@ export default function CustomerCreditForm() {
           </div>
         </div>
 
-        <div style={{ height: "3px", background: YOKOGAWA_YELLOW, margin: "20px 0 32px" }} />
+        <div style={{ height: "3px", background: YOKOGAWA_BLUE, margin: "20px 0 32px" }} />
 
         {existingMatch && (
           <div style={{ background: WARNING_LIGHT, border: `1px solid ${WARNING}`, borderRadius: "4px", padding: "12px 16px", marginBottom: "24px", fontSize: "13px", color: WARNING }}>
@@ -278,8 +278,8 @@ export default function CustomerCreditForm() {
             marginTop: "24px",
             width: "100%",
             padding: "14px",
-            background: YOKOGAWA_YELLOW,
-            color: YOKOGAWA_DARK,
+            background: YOKOGAWA_BLUE,
+            color: "white",
             border: "none",
             borderRadius: "4px",
             fontSize: "14px",

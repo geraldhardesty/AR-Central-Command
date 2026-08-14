@@ -1,4 +1,4 @@
-import { EXISTING_CUSTOMERS } from "./mockData.js";
+import { EXISTING_CUSTOMERS, WHITELISTED_ACCOUNTS } from "./mockData.js";
 
 const PUBLIC_APPLICATIONS_KEY = "ar_credit_applications";
 
@@ -80,4 +80,11 @@ export function findExistingMatch(form) {
     EXISTING_CUSTOMERS.find((c) => name && normalizeName(c.companyName) === name) ||
     null
   );
+}
+
+// Whitelist match is by Customer ID (SAP sold-to party), not name — see
+// the Docs page (?docs) for the account list and why static-limit holds
+// on these accounts are treated as auto-approve ready.
+export function isWhitelisted(customerId) {
+  return WHITELISTED_ACCOUNTS.some((a) => a.customerId === customerId);
 }
