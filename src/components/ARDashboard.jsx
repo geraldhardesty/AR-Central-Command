@@ -17,6 +17,7 @@ import { assessHold } from "../data/riskScoring.js";
 import MetricCard from "./MetricCard.jsx";
 import StatusBadge from "./StatusBadge.jsx";
 import { RiskScorePill, RecommendationBadge } from "./RiskBadge.jsx";
+import CreditCheckTool from "./CreditCheckTool.jsx";
 
 const APPLY_LINK = `${window.location.origin}${window.location.pathname}?apply`;
 
@@ -178,6 +179,7 @@ export default function ARDashboard() {
         <div style={{ background: "white", borderBottom: `1px solid #e0e0e0`, padding: "0 24px", display: "flex", gap: "32px", position: "sticky", top: 0, zIndex: 10 }}>
           {[
             { id: "holds", label: "Credit Holds & Collections" },
+            { id: "creditcheck", label: "Credit Check" },
             { id: "onboarding", label: "Customer Onboarding" },
           ].map(tab => (
             <button
@@ -540,6 +542,9 @@ export default function ARDashboard() {
               )}
             </div>
           )}
+
+          {/* Credit Check Tab — self-contained, no shared state with the rest of the dashboard */}
+          {mainTab === "creditcheck" && <CreditCheckTool />}
 
           {/* Customer Onboarding Tab */}
           {mainTab === "onboarding" && (

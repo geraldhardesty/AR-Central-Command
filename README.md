@@ -32,15 +32,17 @@ src/
     ARDashboard.jsx           # internal AR staff portal: tabs, state, layout
     CustomerCreditForm.jsx     # standalone, shareable customer credit application
     DocsPage.jsx                # internal reference page (whitelisted accounts)
-    SignaturePad.jsx              # canvas-based digital signature capture
-    RiskBadge.jsx                   # risk score pill + recommendation badge
-    MetricCard.jsx                    # summary metric tile
-    StatusBadge.jsx                    # SAP hold-reason pill (Static / Oldest)
+    CreditCheckTool.jsx           # standalone customer credit lookup
+    SignaturePad.jsx                # canvas-based digital signature capture
+    RiskBadge.jsx                     # risk score pill + recommendation badge
+    MetricCard.jsx                      # summary metric tile
+    StatusBadge.jsx                      # SAP hold-reason pill (Static / Oldest)
   data/
-    constants.js                    # design tokens + business rule constants
-    mockData.js                       # mock holds / delinquent / whitelist / credit balances
-    riskScoring.js                      # calculated risk score + recommendation
-    utils.js                             # form helpers, duplicate-match logic, localStorage bridge
+    constants.js                      # design tokens + business rule constants
+    mockData.js                         # mock holds / delinquent / whitelist / credit balances
+    riskScoring.js                        # calculated risk score + recommendation
+    sapCreditService.js                     # placeholder SAP credit-check call
+    utils.js                                 # form helpers, duplicate-match logic, localStorage bridge
   main.jsx
   index.css
 ```
@@ -105,8 +107,31 @@ account in `mockData.js`) — the eventual agent that pulls real payment
 history from SAP is still to be built; the scoring function itself doesn't
 change, just its input.
 
+## Credit Check
+
+The **Credit Check** tab is a rep-facing lookup, separate from the Credit
+Holds workflow: type a customer name, Customer ID, or billing address into
+one search field, and get back (a) whether the account is currently on a
+delinquency credit hold, and (b) its current available credit — credit
+limit minus open POs not yet paid, **not** counting any credit balance on
+the account.
+
+It's built as a self-contained module on purpose — `CreditCheckTool.jsx`
+holds no dependency on `ARDashboard` state, and all data comes through one
+function, `checkCustomerCredit()` in `sapCreditService.js`. Both are
+designed to be lifted out of this dashboard into wherever this tool
+eventually lives, without needing to untangle it from the rest of the app.
+`sapCreditService.js` simulates the latency of a real SAP round-trip
+(rather than resolving instantly) so the loading state is exercised too —
+in production this becomes a real call, most likely `BAPI_CUSTOMER_GETDETAIL`
+for master data plus a credit management read (FSCM or FD32 /
+S_ALR_87012218) for open exposure.
+
 ## Known TODOs / next steps
 
+- [ ] **Real SAP credit check** — `checkCustomerCredit()` in
+      `sapCreditService.js` is a placeholder over hand-authored mock data.
+      Wire it to a real SAP call.
 - [ ] **AR agent** — submissions land in the Queue as a to-do, but nothing
       triages them yet. Build the agent that picks them up.
 - [ ] **Real payment history** — `calculateRiskScore()` in `riskScoring.js`
