@@ -4,9 +4,10 @@
 // TODO: replace with a real call — customer master + address from
 // BAPI_CUSTOMER_GETDETAIL, credit limit and exposure from FSCM credit
 // management (or the classic FD32 / S_ALR_87012218 credit exposure view).
-// The rest of the app — and wherever this tool ends up living once it
-// migrates out of this dashboard — only depends on checkCustomerCredit()
-// below, not on how the SAP call is actually made.
+// The rest of the app — and wherever these tools end up living once they
+// migrate out of this dashboard — only depends on checkCustomerCredit()
+// and checkOrderCreditRisk() below, not on how the SAP call is actually
+// made.
 // -----------------------------------------------------------------------
 
 const SIMULATED_LATENCY_MS = 600;
@@ -142,4 +143,46 @@ export function checkCustomerCredit(query) {
       resolve({ query, matches: found.map(buildResult) });
     }, SIMULATED_LATENCY_MS);
   });
+}
+
+// Checks whether a specific upcoming order would put the account on (or
+// keep it on) credit hold — for the sales-partner-facing widget. Order of
+// checks matches how AR actually reasons about it: an existing delinquency
+// hold is reported first, regardless of the new order's size, since that's
+// already blocking; only if the account is clear of that does the order
+// amount get compared to available credit.
+export function checkOrderCreditRisk(query, orderAmount) {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const amount = Number(orderAmount) || 0;
+      const found = MOCK_CUSTOMER_MASTER.filter((c) => matches(c, query));
+      resolve({
+        query,
+        orderAmount: amount,
+        matches: found.map((c) => {
+          const result = buildResult(c);
+          return { ...result, orderAmount: amount, ...assessOrderRisk(result, amount) };
+        }),
+      });
+    }, SIMULATED_LATENCY_MS);
+  });
+}
+
+function assessOrderRisk(result, orderAmount) {
+  if (result.onDelinquencyHold) {
+    return {
+      riskStatus: "delinquent_hold",
+      riskMessage: "On credit hold - overdue invoice.",
+    };
+  }
+  if (orderAmount > result.availableCredit) {
+    return {
+      riskStatus: "would_exceed_limit",
+      riskMessage: "Credit hold warning - this PO amount will exceed customer's credit limit.",
+    };
+  }
+  return {
+    riskStatus: "clear",
+    riskMessage: "Clear to proceed - order is within available credit.",
+  };
 }

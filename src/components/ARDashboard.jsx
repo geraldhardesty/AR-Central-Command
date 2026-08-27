@@ -20,6 +20,7 @@ import { RiskScorePill, RecommendationBadge } from "./RiskBadge.jsx";
 import CreditCheckTool from "./CreditCheckTool.jsx";
 
 const APPLY_LINK = `${window.location.origin}${window.location.pathname}?apply`;
+const WIDGET_LINK = `${window.location.origin}${window.location.pathname}?widget`;
 
 // Main App
 export default function ARDashboard() {
@@ -30,6 +31,7 @@ export default function ARDashboard() {
   const [submittedRequests, setSubmittedRequests] = useState([]);
   const [sapRecords, setSapRecords] = useState([]);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [widgetLinkCopied, setWidgetLinkCopied] = useState(false);
   const [riskSort, setRiskSort] = useState(null); // null | "asc" | "desc"
 
   const toggleRiskSort = () => setRiskSort(riskSort === "desc" ? "asc" : riskSort === "asc" ? null : "desc");
@@ -49,6 +51,12 @@ export default function ARDashboard() {
     navigator.clipboard.writeText(APPLY_LINK);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
+  };
+
+  const copyWidgetLink = () => {
+    navigator.clipboard.writeText(WIDGET_LINK);
+    setWidgetLinkCopied(true);
+    setTimeout(() => setWidgetLinkCopied(false), 2000);
   };
 
   const pushToSap = (requestId) => {
@@ -544,7 +552,43 @@ export default function ARDashboard() {
           )}
 
           {/* Credit Check Tab — self-contained, no shared state with the rest of the dashboard */}
-          {mainTab === "creditcheck" && <CreditCheckTool />}
+          {mainTab === "creditcheck" && (
+            <div>
+              <div style={{ background: "white", border: `1px solid #e0e0e0`, borderRadius: "4px", padding: "24px", marginBottom: "20px" }}>
+                <h3 style={{ fontSize: "16px", fontWeight: 700, color: YOKOGAWA_DARK, margin: "0 0 8px" }}>Give sales partners a self-serve check</h3>
+                <p style={{ fontSize: "13px", color: GRAY_MEDIUM, margin: "0 0 20px", lineHeight: 1.6 }}>
+                  Partners can check credit standing themselves before submitting a PO — enter a
+                  customer plus the potential order amount, and get a plain go/no-go read without
+                  needing to ask AR directly.
+                </p>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <input
+                    type="text"
+                    readOnly
+                    value={WIDGET_LINK}
+                    style={{ flex: 1, padding: "10px 12px", border: `1px solid #d0d5d9`, borderRadius: "4px", fontSize: "13px", color: YOKOGAWA_DARK, background: GRAY_LIGHT, fontFamily: "monospace" }}
+                  />
+                  <button
+                    onClick={copyWidgetLink}
+                    style={{ padding: "10px 16px", background: widgetLinkCopied ? SUCCESS : YOKOGAWA_BLUE, color: "white", border: "none", borderRadius: "4px", fontSize: "13px", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", whiteSpace: "nowrap" }}
+                  >
+                    <Copy style={{ width: "14px", height: "14px" }} /> {widgetLinkCopied ? "Copied!" : "Copy Link"}
+                  </button>
+                  <a
+                    href={WIDGET_LINK}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ padding: "10px 16px", border: `1px solid #d0d5d9`, borderRadius: "4px", fontSize: "13px", fontWeight: 500, color: YOKOGAWA_DARK, display: "flex", alignItems: "center", gap: "6px", whiteSpace: "nowrap" }}
+                  >
+                    <ExternalLink style={{ width: "14px", height: "14px" }} /> Preview
+                  </a>
+                </div>
+              </div>
+
+              <h3 style={{ fontSize: "16px", fontWeight: 700, color: YOKOGAWA_DARK, margin: "0 0 12px" }}>Or check it yourself</h3>
+              <CreditCheckTool />
+            </div>
+          )}
 
           {/* Customer Onboarding Tab */}
           {mainTab === "onboarding" && (

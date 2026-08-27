@@ -27,13 +27,14 @@ npm run preview    # preview the production build locally
 
 ```
 src/
-  App.jsx                    # routes ?apply -> CustomerCreditForm, ?docs -> DocsPage, else ARDashboard
+  App.jsx                    # routes ?apply/?docs/?widget, else ARDashboard
   components/
     ARDashboard.jsx           # internal AR staff portal: tabs, state, layout
     CustomerCreditForm.jsx     # standalone, shareable customer credit application
     DocsPage.jsx                # internal reference page (whitelisted accounts)
-    CreditCheckTool.jsx           # standalone customer credit lookup
-    SignaturePad.jsx                # canvas-based digital signature capture
+    CreditCheckTool.jsx           # standalone customer credit lookup (internal, rep-facing)
+    PartnerCreditWidget.jsx         # standalone sales-partner credit check widget
+    SignaturePad.jsx                  # canvas-based digital signature capture
     RiskBadge.jsx                     # risk score pill + recommendation badge
     MetricCard.jsx                      # summary metric tile
     StatusBadge.jsx                      # SAP hold-reason pill (Static / Oldest)
@@ -127,11 +128,35 @@ in production this becomes a real call, most likely `BAPI_CUSTOMER_GETDETAIL`
 for master data plus a credit management read (FSCM or FD32 /
 S_ALR_87012218) for open exposure.
 
+## Partner Credit Check widget
+
+The **Credit Check** tab also has a "Give sales partners a self-serve
+check" panel with a `?widget` link — a separate, minimal, standalone page
+(`PartnerCreditWidget.jsx`) for external sales partners, not AR staff.
+Where `CreditCheckTool.jsx` shows a full account snapshot, this widget asks
+for a customer *and* a potential order amount, and returns one of three
+plain messages so a partner can decide whether to submit a PO without
+looping in AR first:
+
+1. Account already on a delinquency hold → **"On credit hold - overdue
+   invoice."**
+2. Not delinquent, but the order amount exceeds available credit →
+   **"Credit hold warning - this PO amount will exceed customer's credit
+   limit."**
+3. Neither → **"Clear to proceed - order is within available credit."**
+
+Both tools share the same mock backend (`sapCreditService.js`) —
+`checkOrderCreditRisk()` reuses the same customer master data and just adds
+the order-amount comparison — so there's one source of truth for what SAP
+would return, not two mock datasets to keep in sync. Like `CreditCheckTool`,
+this widget has no dependency on `ARDashboard` state, on purpose, since it's
+explicitly meant to potentially live outside this dashboard entirely.
+
 ## Known TODOs / next steps
 
-- [ ] **Real SAP credit check** — `checkCustomerCredit()` in
-      `sapCreditService.js` is a placeholder over hand-authored mock data.
-      Wire it to a real SAP call.
+- [ ] **Real SAP credit check** — `checkCustomerCredit()` and
+      `checkOrderCreditRisk()` in `sapCreditService.js` are placeholders
+      over hand-authored mock data. Wire them to a real SAP call.
 - [ ] **AR agent** — submissions land in the Queue as a to-do, but nothing
       triages them yet. Build the agent that picks them up.
 - [ ] **Real payment history** — `calculateRiskScore()` in `riskScoring.js`
